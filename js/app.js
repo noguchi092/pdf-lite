@@ -9,10 +9,12 @@
     merge: { title: 'PDFを結合', description: '結合したいPDFを選び、順番を整えて保存します。', multiple: true, drop: '結合するPDFファイルを選択' },
     split: { title: 'PDFを分割', description: 'ページごと、または指定した範囲ごとに分けます。', multiple: false, drop: '分割するPDFファイルを選択' },
     compress: { title: 'PDFを圧縮', description: '画質を選び、画像として再構成して容量を軽くします。', multiple: false, drop: '圧縮するPDFファイルを選択' },
-    organize: { title: 'ページを整理', description: 'ページを見ながら、並べ替え・回転・削除ができます。', multiple: false, drop: '整理するPDFファイルを選択' }
+    organize: { title: 'ページを整理', description: 'ページを見ながら、並べ替え・回転・削除ができます。', multiple: false, drop: '整理するPDFファイルを選択' },
+    edit: { title: 'PDFを編集', description: 'PDFの上に文字・手書き・黒塗りなどを追加して保存します。', multiple: false, drop: '編集するPDFファイルを選択' }
   };
 
-  const state = { tool: 'merge', files: [], pages: [], splitMode: 'each', compressLevel: 'standard', pdfJsDoc: null };
+  const state = { tool: 'merge', files: [], pages: [], splitMode: 'each', compressLevel: 'standard', pdfJsDoc: null,
+    editor: { page: 0, annotations: [], activeTool: 'text', color: '#e32929', size: 22, drawing: false, start: null, draft: null } };
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
   const refs = {
@@ -45,6 +47,7 @@
 
   function resetCurrent(clearMessage = true) {
     state.files = []; state.pages = []; state.pdfJsDoc = null;
+    state.editor = { page: 0, annotations: [], activeTool: 'text', color: '#e32929', size: 22, drawing: false, start: null, draft: null };
     refs.input.value = ''; refs.content.innerHTML = ''; refs.drop.classList.remove('hidden'); refs.reset.classList.add('hidden');
     if (clearMessage) clearNotices();
   }
@@ -62,6 +65,7 @@
     refs.input.value = '';
     try {
       if (state.tool === 'organize') await loadOrganizer();
+      else if (state.tool === 'edit') await loadEditor();
       else renderTool();
       refs.drop.classList.add('hidden'); refs.reset.classList.remove('hidden');
     } catch (error) { console.error(error); setProcessing(false); showError('PDFを読み込めませんでした。パスワード保護やファイル破損がないか確認してください。'); }
@@ -245,6 +249,112 @@
       }
       downloadBytes(await output.save({ useObjectStreams: true }), 'ページ整理済み.pdf', 'application/pdf'); showSuccess('ページ整理が完了しました。「ページ整理済み.pdf」を保存しました。');
     } catch (error) { console.error(error); showError('ページを保存できませんでした。'); }
+    finally { setProcessing(false); }
+  }
+
+  async function loadEditor() {
+    setProcessing(true, '編集画面を準備しています');
+    const bytes = new Uint8Array(await state.files[0].arrayBuffer());
+    state.pdfJsDoc = await pdfjsLib.getDocument({ data: bytes }).promise;
+    state.editor.annotations = Array.from({ length: state.pdfJsDoc.numPages }, () => []);
+    refs.content.innerHTML = `<div class="file-list">${fileRow(state.files[0], 0)}</div>
+      <div class="editor-shell">
+        <div class="editor-toolbar" role="toolbar" aria-label="PDF編集ツール">
+          <button class="editor-tool is-selected" data-edit-tool="text" type="button">文字</button>
+          <button class="editor-tool" data-edit-tool="pen" type="button">手書き</button>
+          <button class="editor-tool" data-edit-tool="highlight" type="button">マーカー</button>
+          <button class="editor-tool" data-edit-tool="black" type="button">黒塗り</button>
+          <button class="editor-tool" data-edit-tool="white" type="button">白塗り</button>
+          <label class="editor-control">色 <input id="edit-color" type="color" value="#e32929"></label>
+          <label class="editor-control">太さ <input id="edit-size" type="range" min="2" max="48" value="22"></label>
+          <button class="editor-undo" id="editor-undo" type="button">↶ 元に戻す</button>
+        </div>
+        <p class="editor-help" id="editor-help">PDF上の文字を入れたい場所をタップしてください。</p>
+        <div class="editor-stage" id="editor-stage"><canvas id="pdf-canvas"></canvas><canvas id="annotation-canvas"></canvas></div>
+        <div class="editor-pagination"><button id="editor-prev" type="button">← 前のページ</button><strong id="editor-page-label"></strong><button id="editor-next" type="button">次のページ →</button></div>
+      </div>
+      <button class="primary-button" id="run-edit" type="button">編集したPDFを保存する</button>`;
+    bindFileRows(() => resetCurrent());
+    $$('.editor-tool').forEach(button => button.addEventListener('click', () => selectEditorTool(button.dataset.editTool)));
+    $('#edit-color').addEventListener('input', event => { state.editor.color = event.target.value; });
+    $('#edit-size').addEventListener('input', event => { state.editor.size = Number(event.target.value); });
+    $('#editor-undo').addEventListener('click', () => { state.editor.annotations[state.editor.page].pop(); drawAnnotations(); });
+    $('#editor-prev').addEventListener('click', () => changeEditorPage(-1));
+    $('#editor-next').addEventListener('click', () => changeEditorPage(1));
+    $('#run-edit').addEventListener('click', saveEditedPdf);
+    bindEditorCanvas();
+    await renderEditorPage();
+    setProcessing(false);
+  }
+
+  function selectEditorTool(tool) {
+    state.editor.activeTool = tool;
+    $$('.editor-tool').forEach(button => button.classList.toggle('is-selected', button.dataset.editTool === tool));
+    const help = { text: 'PDF上の文字を入れたい場所をタップしてください。', pen: 'PDF上を指やマウスでなぞってください。', highlight: '強調したい場所をドラッグしてください。', black: '隠したい場所をドラッグしてください。', white: '白く消したい場所をドラッグしてください。' };
+    $('#editor-help').textContent = help[tool];
+  }
+
+  async function renderEditorPage() {
+    const page = await state.pdfJsDoc.getPage(state.editor.page + 1);
+    const stage = $('#editor-stage');
+    const base = page.getViewport({ scale: 1 });
+    const maxWidth = Math.min(900, Math.max(280, stage.parentElement.clientWidth - 4));
+    const viewport = page.getViewport({ scale: maxWidth / base.width });
+    const canvas = $('#pdf-canvas'); const overlay = $('#annotation-canvas');
+    canvas.width = overlay.width = Math.ceil(viewport.width); canvas.height = overlay.height = Math.ceil(viewport.height);
+    stage.style.width = `${canvas.width}px`; stage.style.height = `${canvas.height}px`;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    page.cleanup(); drawAnnotations();
+    $('#editor-page-label').textContent = `${state.editor.page + 1} / ${state.pdfJsDoc.numPages}ページ`;
+    $('#editor-prev').disabled = state.editor.page === 0;
+    $('#editor-next').disabled = state.editor.page === state.pdfJsDoc.numPages - 1;
+  }
+
+  function bindEditorCanvas() {
+    const canvas = $('#annotation-canvas');
+    const point = event => { const rect = canvas.getBoundingClientRect(); const source = event.touches ? event.touches[0] : event; return { x: (source.clientX - rect.left) / rect.width, y: (source.clientY - rect.top) / rect.height }; };
+    const start = event => {
+      event.preventDefault(); const p = point(event); const tool = state.editor.activeTool;
+      if (tool === 'text') { const value = prompt('追加する文字を入力してください'); if (value) { state.editor.annotations[state.editor.page].push({ type: 'text', x: p.x, y: p.y, text: value, color: state.editor.color, size: state.editor.size }); drawAnnotations(); } return; }
+      state.editor.drawing = true; state.editor.start = p;
+      state.editor.draft = tool === 'pen' ? { type: 'pen', color: state.editor.color, size: Math.max(2, state.editor.size / 5), points: [p] } : { type: tool, x: p.x, y: p.y, w: 0, h: 0 };
+    };
+    const move = event => { if (!state.editor.drawing) return; event.preventDefault(); const p = point(event); const draft = state.editor.draft; if (draft.type === 'pen') draft.points.push(p); else { draft.x = Math.min(state.editor.start.x, p.x); draft.y = Math.min(state.editor.start.y, p.y); draft.w = Math.abs(p.x - state.editor.start.x); draft.h = Math.abs(p.y - state.editor.start.y); } drawAnnotations(draft); };
+    const end = event => { if (!state.editor.drawing) return; event.preventDefault(); state.editor.drawing = false; const draft = state.editor.draft; if (draft.type === 'pen' ? draft.points.length > 1 : draft.w > .003 && draft.h > .003) state.editor.annotations[state.editor.page].push(draft); state.editor.draft = null; drawAnnotations(); };
+    canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
+    canvas.addEventListener('touchstart', start, { passive: false }); canvas.addEventListener('touchmove', move, { passive: false }); canvas.addEventListener('touchend', end, { passive: false });
+  }
+
+  function drawAnnotations(extra = null, target = $('#annotation-canvas')) {
+    const ctx = target.getContext('2d'); ctx.clearRect(0, 0, target.width, target.height);
+    const items = [...state.editor.annotations[state.editor.page], ...(extra ? [extra] : [])];
+    items.forEach(item => drawAnnotation(ctx, item, target.width, target.height));
+  }
+
+  function drawAnnotation(ctx, item, width, height) {
+    if (item.type === 'text') { ctx.fillStyle = item.color; ctx.font = `700 ${Math.max(8, item.size * width / 900)}px sans-serif`; ctx.textBaseline = 'top'; item.text.split('\n').forEach((line, i) => ctx.fillText(line, item.x * width, item.y * height + i * item.size * 1.25 * width / 900)); return; }
+    if (item.type === 'pen') { ctx.strokeStyle = item.color; ctx.lineWidth = item.size * width / 900; ctx.lineCap = ctx.lineJoin = 'round'; ctx.beginPath(); item.points.forEach((p, i) => i ? ctx.lineTo(p.x * width, p.y * height) : ctx.moveTo(p.x * width, p.y * height)); ctx.stroke(); return; }
+    ctx.fillStyle = item.type === 'black' ? '#000' : item.type === 'white' ? '#fff' : 'rgba(255, 225, 0, .38)';
+    ctx.fillRect(item.x * width, item.y * height, item.w * width, item.h * height);
+  }
+
+  async function changeEditorPage(amount) { const next = state.editor.page + amount; if (next < 0 || next >= state.pdfJsDoc.numPages) return; state.editor.page = next; await renderEditorPage(); }
+
+  async function saveEditedPdf() {
+    setProcessing(true, '編集内容をPDFに保存しています');
+    try {
+      const doc = await PDFDocument.load(await state.files[0].arrayBuffer());
+      for (let i = 0; i < doc.getPageCount(); i++) {
+        const items = state.editor.annotations[i]; if (!items.length) continue;
+        const page = doc.getPage(i); const { width, height } = page.getSize();
+        const canvas = document.createElement('canvas'); const scale = Math.min(2, Math.max(1, 1400 / width)); canvas.width = Math.ceil(width * scale); canvas.height = Math.ceil(height * scale);
+        const ctx = canvas.getContext('2d'); items.forEach(item => drawAnnotation(ctx, item, canvas.width, canvas.height));
+        const png = await doc.embedPng(await canvasToBytes(canvas, 'image/png')); page.drawImage(png, { x: 0, y: 0, width, height });
+        canvas.width = canvas.height = 1; setProgress(((i + 1) / doc.getPageCount()) * 92);
+      }
+      downloadBytes(await doc.save({ useObjectStreams: true }), '編集済み.pdf', 'application/pdf');
+      showSuccess('編集が完了しました。「編集済み.pdf」を保存しました。');
+    } catch (error) { console.error(error); showError('編集したPDFを保存できませんでした。'); }
     finally { setProcessing(false); }
   }
 
