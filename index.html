@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="PDFの結合・分割・圧縮・ページ整理を、ブラウザだけで安全に行える無料ツール。">
+  <meta name="theme-color" content="#151f3a">
+  <title>PDF Lite｜ブラウザで使えるPDF便利ツール</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23ff5a4f'/%3E%3Cpath d='M19 13h19l10 10v28H19z' fill='white'/%3E%3Cpath d='M38 13v11h10' fill='none' stroke='%23ff5a4f' stroke-width='4'/%3E%3Cpath d='M25 35h17M25 42h13' stroke='%23151f3a' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="PDF Lite トップへ">
+      <span class="brand-mark" aria-hidden="true">P</span>
+      <span>PDF <b>Lite</b></span>
+    </a>
+    <div class="privacy-chip"><span aria-hidden="true">●</span> ファイルは外部送信されません</div>
+  </header>
+
+  <main id="top">
+    <section class="intro" aria-labelledby="page-title">
+      <p class="eyebrow">SIMPLE PDF TOOLS</p>
+      <h1 id="page-title">PDF作業を、<span>もっと簡単に。</span></h1>
+      <p class="intro-copy">インストール不要。すべての処理はお使いの端末内で完了します。</p>
+    </section>
+
+    <nav class="tool-grid" aria-label="PDFツールを選択">
+      <button class="tool-card is-active" type="button" data-tool="merge" aria-pressed="true">
+        <span class="tool-icon icon-merge" aria-hidden="true"><i></i><i></i></span>
+        <span><strong>PDF結合</strong><small>複数のPDFを1つにまとめる</small></span>
+        <span class="card-arrow" aria-hidden="true">→</span>
+      </button>
+      <button class="tool-card" type="button" data-tool="split" aria-pressed="false">
+        <span class="tool-icon icon-split" aria-hidden="true"><i></i><i></i></span>
+        <span><strong>PDF分割</strong><small>ページごと・範囲ごとに分ける</small></span>
+        <span class="card-arrow" aria-hidden="true">→</span>
+      </button>
+      <button class="tool-card" type="button" data-tool="compress" aria-pressed="false">
+        <span class="tool-icon icon-compress" aria-hidden="true"><i>↘</i><i>↖</i></span>
+        <span><strong>PDF圧縮</strong><small>画質を選んで容量を小さくする</small></span>
+        <span class="card-arrow" aria-hidden="true">→</span>
+      </button>
+      <button class="tool-card" type="button" data-tool="organize" aria-pressed="false">
+        <span class="tool-icon icon-organize" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span><strong>ページ整理</strong><small>並べ替え・削除・回転</small></span>
+        <span class="card-arrow" aria-hidden="true">→</span>
+      </button>
+    </nav>
+
+    <section class="workspace" aria-live="polite">
+      <div class="workspace-heading">
+        <div>
+          <p class="step-label">SELECTED TOOL</p>
+          <h2 id="workspace-title">PDFを結合</h2>
+          <p id="workspace-description">結合したいPDFを選び、順番を整えて保存します。</p>
+        </div>
+        <button class="text-button hidden" id="reset-button" type="button">最初からやり直す</button>
+      </div>
+
+      <div class="notice error hidden" id="error-box" role="alert"></div>
+      <div class="notice success hidden" id="success-box" role="status"></div>
+
+      <div class="drop-zone" id="drop-zone" tabindex="0" role="button" aria-describedby="drop-help">
+        <input id="file-input" type="file" accept="application/pdf,.pdf" multiple hidden>
+        <span class="drop-icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48" width="48" height="48"><path d="M24 32V10m0 0-8 8m8-8 8 8M9 29v8a4 4 0 0 0 4 4h22a4 4 0 0 0 4-4v-8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <strong id="drop-title">PDFファイルを選択</strong>
+        <span id="drop-help">ここにドラッグ＆ドロップ、またはクリック</span>
+        <span class="select-button">ファイルを選ぶ</span>
+      </div>
+
+      <div id="tool-content"></div>
+    </section>
+
+    <section class="safety" aria-label="このツールの特徴">
+      <div><span aria-hidden="true">⌁</span><strong>端末内で処理</strong><small>サーバーへのアップロードなし</small></div>
+      <div><span aria-hidden="true">∞</span><strong>回数制限なし</strong><small>登録なしですぐ使えます</small></div>
+      <div><span aria-hidden="true">◫</span><strong>PC・スマホ対応</strong><small>主要ブラウザで利用可能</small></div>
+    </section>
+  </main>
+
+  <footer>
+    <a class="brand footer-brand" href="#top"><span class="brand-mark" aria-hidden="true">P</span><span>PDF <b>Lite</b></span></a>
+    <p>PDF処理はすべてブラウザ内で行われます。</p>
+  </footer>
+
+  <div class="processing hidden" id="processing" role="dialog" aria-modal="true" aria-labelledby="processing-title">
+    <div class="processing-card">
+      <div class="spinner" aria-hidden="true"></div>
+      <h2 id="processing-title">PDFを処理しています</h2>
+      <p id="processing-message">しばらくお待ちください。</p>
+      <div class="progress-track"><div id="progress-bar"></div></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
