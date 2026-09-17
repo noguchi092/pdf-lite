@@ -137,7 +137,12 @@ textarea { width: 100%; min-height: 100px; border: 1px solid #cbd2e1; border-rad
 .editor-control output { min-width: 34px; color: var(--blue); }
 .editor-undo { margin-left: auto; color: var(--blue); }
 .editor-help { margin: 9px 0; color: var(--muted); font-size: .88rem; }
-.editor-stage { position: relative; max-width: 100%; margin: 0 auto; overflow: hidden; background: #dfe3eb; box-shadow: 0 6px 20px rgba(21,31,58,.14); touch-action: none; }
+.editor-zoom { display: flex; justify-content: center; align-items: center; gap: 7px; margin: 12px 0; }
+.editor-zoom button { min-width: 44px; height: 40px; padding: 0 12px; border: 1px solid #ccd3e0; border-radius: 9px; background: #fff; color: var(--ink); cursor: pointer; font-weight: 900; font-size: 1.05rem; }
+.editor-zoom button:nth-child(2) { min-width: 76px; font-size: .9rem; }
+.editor-zoom button:disabled { opacity: .4; cursor: not-allowed; }
+.editor-viewport { max-width: 100%; overflow: auto; padding: 4px; border-radius: 10px; background: #e8ebf1; -webkit-overflow-scrolling: touch; }
+.editor-stage { position: relative; margin: 0 auto; overflow: hidden; background: #dfe3eb; box-shadow: 0 6px 20px rgba(21,31,58,.14); touch-action: none; }
 .editor-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 #annotation-canvas { cursor: crosshair; }
 .editor-pagination { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 14px; }
@@ -177,9 +182,25 @@ textarea { width: 100%; min-height: 100px; border: 1px solid #cbd2e1; border-rad
 .primary-link { display: inline-block; min-width: 230px; padding: 14px 28px; border-radius: 12px; color: #fff; background: var(--accent); font-weight: 900; text-decoration: none; box-shadow: 0 9px 20px rgba(255,90,79,.23); }
 .primary-link:hover { background: var(--accent-dark); }
 
-footer { padding: 30px 24px; background: var(--ink); color: #c3c9d8; display: flex; justify-content: center; align-items: center; gap: 38px; }
+footer { padding: 30px 24px; background: var(--ink); color: #c3c9d8; display: flex; justify-content: center; align-items: center; gap: 30px; }
 .footer-brand { color: #fff; }.footer-brand .brand-mark { width: 30px; height: 34px; font-size: .9rem; }
 footer p { font-size: .85rem; }
+.footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; }
+.footer-links a { color: #fff; font-size: .85rem; font-weight: 750; text-decoration: none; }
+.footer-links a:hover { color: var(--accent); }
+
+.legal-main { max-width: 900px; }
+.legal-hero { margin-bottom: 28px; }
+.legal-hero h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.4rem); line-height: 1.2; letter-spacing: -.055em; }
+.legal-hero p:last-child { color: var(--muted); margin: 12px 0 0; }
+.legal-card { padding: clamp(22px, 5vw, 40px); background: var(--paper); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
+.legal-card h2 { margin: 28px 0 8px; font-size: 1.16rem; }.legal-card h2:first-child { margin-top: 0; }
+.legal-card p, .legal-card li { color: #4f596f; }
+.legal-card ul { padding-left: 1.35em; }
+.company-table { width: 100%; border-collapse: collapse; }
+.company-table th, .company-table td { padding: 15px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.company-table th { width: 30%; color: var(--ink); background: var(--soft); }
+.draft-note { margin-top: 22px; padding: 12px 15px; color: #705327; background: #fff8e8; border: 1px solid #f1d9a7; border-radius: 10px; font-size: .88rem; }
 
 .processing { position: fixed; inset: 0; background: rgba(11,17,34,.72); backdrop-filter: blur(6px); display: grid; place-items: center; z-index: 50; padding: 20px; }
 .processing-card { width: min(420px, 100%); background: #fff; border-radius: 18px; padding: 34px; text-align: center; box-shadow: var(--shadow); }
@@ -208,6 +229,7 @@ footer p { font-size: .85rem; }
   .plain-explanation { grid-template-columns: 1fr; gap: 14px; padding: 24px 20px; }.attention-box { padding: 20px; }
   .editor-toolbar, .editor-options { gap: 6px; }.editor-tool, .editor-undo { padding: 8px 10px; font-size: .86rem; }.editor-undo { margin-left: 0; }
   .editor-options { align-items: stretch; }.editor-control { width: 100%; justify-content: space-between; }.editor-control input[type="range"] { flex: 1; }
+  .company-table th, .company-table td { display: block; width: 100%; }.company-table th { border-bottom: 0; padding-bottom: 5px; }.company-table td { padding-top: 7px; }
 }
 
 /* 端末内処理の説明ページ */
