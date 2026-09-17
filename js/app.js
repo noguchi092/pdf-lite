@@ -10,7 +10,7 @@
     split: { title: 'PDFを分割', description: 'ページごと、または指定した範囲ごとに分けます。', multiple: false, drop: '分割するPDFファイルを選択' },
     compress: { title: 'PDFを圧縮', description: '画質を選び、画像として再構成して容量を軽くします。', multiple: false, drop: '圧縮するPDFファイルを選択' },
     organize: { title: 'ページを整理', description: 'ページを見ながら、並べ替え・回転・削除ができます。', multiple: false, drop: '整理するPDFファイルを選択' },
-    edit: { title: 'PDFを編集', description: 'PDFの上に文字・手書き・黒塗りなどを追加して保存します。', multiple: false, drop: '編集するPDFファイルを選択' }
+    edit: { title: 'PDFを編集', description: 'PDFの上に文字・手書き・マーカーを追加して保存します。', multiple: false, drop: '編集するPDFファイルを選択' }
   };
 
   const state = { tool: 'merge', files: [], pages: [], splitMode: 'each', compressLevel: 'standard', pdfJsDoc: null,
