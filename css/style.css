@@ -200,6 +200,8 @@ footer p { font-size: .85rem; }
 .company-table { width: 100%; border-collapse: collapse; }
 .company-table th, .company-table td { padding: 15px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 .company-table th { width: 30%; color: var(--ink); background: var(--soft); }
+.company-table p { margin: 0 0 10px; }.company-table p:last-child { margin-bottom: 0; }
+.company-table a { color: var(--blue); font-weight: 750; }
 .draft-note { margin-top: 22px; padding: 12px 15px; color: #705327; background: #fff8e8; border: 1px solid #f1d9a7; border-radius: 10px; font-size: .88rem; }
 
 .processing { position: fixed; inset: 0; background: rgba(11,17,34,.72); backdrop-filter: blur(6px); display: grid; place-items: center; z-index: 50; padding: 20px; }
