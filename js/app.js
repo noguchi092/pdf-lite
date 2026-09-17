@@ -14,7 +14,7 @@
   };
 
   const state = { tool: 'merge', files: [], pages: [], splitMode: 'each', compressLevel: 'standard', pdfJsDoc: null,
-    editor: { page: 0, annotations: [], activeTool: 'text', color: '#e32929', fontSize: 24, font: 'gothic', opacity: .38, penWidth: 5, drawing: false, start: null, draft: null } };
+    editor: { page: 0, annotations: [], activeTool: 'text', color: '#e32929', fontSize: 24, font: 'gothic', opacity: .38, penWidth: 5, zoom: 1, drawing: false, start: null, draft: null } };
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
   const refs = {
@@ -47,7 +47,7 @@
 
   function resetCurrent(clearMessage = true) {
     state.files = []; state.pages = []; state.pdfJsDoc = null;
-    state.editor = { page: 0, annotations: [], activeTool: 'text', color: '#e32929', fontSize: 24, font: 'gothic', opacity: .38, penWidth: 5, drawing: false, start: null, draft: null };
+    state.editor = { page: 0, annotations: [], activeTool: 'text', color: '#e32929', fontSize: 24, font: 'gothic', opacity: .38, penWidth: 5, zoom: 1, drawing: false, start: null, draft: null };
     refs.input.value = ''; refs.content.innerHTML = ''; refs.drop.classList.remove('hidden'); refs.reset.classList.add('hidden');
     if (clearMessage) clearNotices();
   }
@@ -268,28 +268,17 @@
         <div class="editor-options" aria-label="編集設定">
           <label class="editor-control">色 <input id="edit-color" type="color" value="#e32929"></label>
           <label class="editor-control" data-editor-setting="text">フォント
-            <select id="edit-font">
-              <option value="gothic">ゴシック体</option>
-              <option value="mincho">明朝体</option>
-              <option value="rounded">丸ゴシック体</option>
-              <option value="monospace">等幅フォント</option>
-            </select>
+            <select id="edit-font"><option value="gothic">ゴシック体</option><option value="mincho">明朝体</option><option value="rounded">丸ゴシック体</option><option value="monospace">等幅フォント</option></select>
           </label>
           <label class="editor-control" data-editor-setting="text">文字サイズ
-            <select id="edit-font-size">
-              <option value="12">12</option><option value="16">16</option><option value="20">20</option><option value="24" selected>24</option>
-              <option value="32">32</option><option value="40">40</option><option value="48">48</option><option value="64">64</option>
-            </select>
+            <select id="edit-font-size"><option value="12">12</option><option value="16">16</option><option value="20">20</option><option value="24" selected>24</option><option value="32">32</option><option value="40">40</option><option value="48">48</option><option value="64">64</option></select>
           </label>
-          <label class="editor-control hidden" data-editor-setting="pen">線の太さ
-            <input id="edit-pen-width" type="range" min="2" max="24" value="5"><output id="pen-width-value">5</output>
-          </label>
-          <label class="editor-control hidden" data-editor-setting="highlight">不透明度
-            <input id="edit-opacity" type="range" min="5" max="100" step="5" value="38"><output id="opacity-value">38%</output>
-          </label>
+          <label class="editor-control hidden" data-editor-setting="pen">線の太さ <input id="edit-pen-width" type="range" min="2" max="24" value="5"><output id="pen-width-value">5</output></label>
+          <label class="editor-control hidden" data-editor-setting="highlight">不透明度 <input id="edit-opacity" type="range" min="5" max="100" step="5" value="38"><output id="opacity-value">38%</output></label>
         </div>
         <p class="editor-help" id="editor-help">PDF上の文字を入れたい場所をタップしてください。</p>
-        <div class="editor-stage" id="editor-stage"><canvas id="pdf-canvas"></canvas><canvas id="annotation-canvas"></canvas></div>
+        <div class="editor-zoom" aria-label="表示倍率"><button id="editor-zoom-out" type="button" aria-label="縮小">−</button><button id="editor-zoom-reset" type="button"><span id="editor-zoom-label">100%</span></button><button id="editor-zoom-in" type="button" aria-label="拡大">＋</button></div>
+        <div class="editor-viewport" id="editor-viewport"><div class="editor-stage" id="editor-stage"><canvas id="pdf-canvas"></canvas><canvas id="annotation-canvas"></canvas></div></div>
         <div class="editor-pagination"><button id="editor-prev" type="button">← 前のページ</button><strong id="editor-page-label"></strong><button id="editor-next" type="button">次のページ →</button></div>
       </div>
       <button class="primary-button" id="run-edit" type="button">編集したPDFを保存する</button>`;
@@ -303,6 +292,9 @@
     $('#editor-undo').addEventListener('click', () => { state.editor.annotations[state.editor.page].pop(); drawAnnotations(); });
     $('#editor-prev').addEventListener('click', () => changeEditorPage(-1));
     $('#editor-next').addEventListener('click', () => changeEditorPage(1));
+    $('#editor-zoom-out').addEventListener('click', () => setEditorZoom(state.editor.zoom - .25));
+    $('#editor-zoom-reset').addEventListener('click', () => setEditorZoom(1));
+    $('#editor-zoom-in').addEventListener('click', () => setEditorZoom(state.editor.zoom + .25));
     $('#run-edit').addEventListener('click', saveEditedPdf);
     bindEditorCanvas();
     await renderEditorPage();
@@ -321,8 +313,9 @@
     const page = await state.pdfJsDoc.getPage(state.editor.page + 1);
     const stage = $('#editor-stage');
     const base = page.getViewport({ scale: 1 });
-    const maxWidth = Math.min(900, Math.max(280, stage.parentElement.clientWidth - 4));
-    const viewport = page.getViewport({ scale: maxWidth / base.width });
+    const availableWidth = $('#editor-viewport').clientWidth - 4;
+    const baseWidth = Math.min(900, Math.max(280, availableWidth));
+    const viewport = page.getViewport({ scale: (baseWidth * state.editor.zoom) / base.width });
     const canvas = $('#pdf-canvas'); const overlay = $('#annotation-canvas');
     canvas.width = overlay.width = Math.ceil(viewport.width); canvas.height = overlay.height = Math.ceil(viewport.height);
     stage.style.width = `${canvas.width}px`; stage.style.height = `${canvas.height}px`;
@@ -331,6 +324,14 @@
     $('#editor-page-label').textContent = `${state.editor.page + 1} / ${state.pdfJsDoc.numPages}ページ`;
     $('#editor-prev').disabled = state.editor.page === 0;
     $('#editor-next').disabled = state.editor.page === state.pdfJsDoc.numPages - 1;
+    $('#editor-zoom-label').textContent = `${Math.round(state.editor.zoom * 100)}%`;
+    $('#editor-zoom-out').disabled = state.editor.zoom <= .5;
+    $('#editor-zoom-in').disabled = state.editor.zoom >= 2.5;
+  }
+
+  async function setEditorZoom(value) {
+    state.editor.zoom = Math.max(.5, Math.min(2.5, Math.round(value * 4) / 4));
+    await renderEditorPage();
   }
 
   function bindEditorCanvas() {
