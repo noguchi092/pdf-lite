@@ -127,11 +127,14 @@ textarea { width: 100%; min-height: 100px; border: 1px solid #cbd2e1; border-rad
 
 .editor-shell { margin-top: 22px; }
 .editor-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px; background: var(--soft); border: 1px solid var(--line); border-radius: 12px; }
+.editor-options { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; padding: 10px 12px; background: #fff; border: 1px solid var(--line); border-radius: 12px; }
 .editor-tool, .editor-undo, .editor-pagination button { border: 1px solid #ccd3e0; background: #fff; border-radius: 8px; padding: 9px 13px; cursor: pointer; font-weight: 800; }
 .editor-tool.is-selected { color: #fff; background: var(--ink); border-color: var(--ink); }
 .editor-control { display: flex; align-items: center; gap: 6px; font-size: .85rem; font-weight: 800; padding: 4px 8px; }
 .editor-control input[type="color"] { width: 35px; height: 32px; padding: 2px; border: 1px solid #ccd3e0; border-radius: 6px; background: #fff; }
 .editor-control input[type="range"] { width: 90px; }
+.editor-control select { min-height: 34px; padding: 4px 28px 4px 8px; border: 1px solid #ccd3e0; border-radius: 7px; background: #fff; color: var(--ink); }
+.editor-control output { min-width: 34px; color: var(--blue); }
 .editor-undo { margin-left: auto; color: var(--blue); }
 .editor-help { margin: 9px 0; color: var(--muted); font-size: .88rem; }
 .editor-stage { position: relative; max-width: 100%; margin: 0 auto; overflow: hidden; background: #dfe3eb; box-shadow: 0 6px 20px rgba(21,31,58,.14); touch-action: none; }
@@ -203,7 +206,8 @@ footer p { font-size: .85rem; }
   .info-main { padding-top: 28px; }.back-link { margin-bottom: 24px; }.info-hero { margin-bottom: 30px; }
   .process-flow { grid-template-columns: 1fr; padding: 16px; }.process-flow i { transform: rotate(90deg); text-align: center; line-height: 1; }.process-flow div { min-height: 105px; }
   .plain-explanation { grid-template-columns: 1fr; gap: 14px; padding: 24px 20px; }.attention-box { padding: 20px; }
-  .editor-toolbar { gap: 6px; }.editor-tool, .editor-undo { padding: 8px 10px; font-size: .86rem; }.editor-undo { margin-left: 0; }
+  .editor-toolbar, .editor-options { gap: 6px; }.editor-tool, .editor-undo { padding: 8px 10px; font-size: .86rem; }.editor-undo { margin-left: 0; }
+  .editor-options { align-items: stretch; }.editor-control { width: 100%; justify-content: space-between; }.editor-control input[type="range"] { flex: 1; }
 }
 
 /* 端末内処理の説明ページ */
