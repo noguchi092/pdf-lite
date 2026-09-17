@@ -14,7 +14,7 @@
   };
 
   const state = { tool: 'merge', files: [], pages: [], splitMode: 'each', compressLevel: 'standard', pdfJsDoc: null,
-    editor: { page: 0, annotations: [], activeTool: 'text', color: '#e32929', size: 22, drawing: false, start: null, draft: null } };
+    editor: { page: 0, annotations: [], activeTool: 'text', color: '#e32929', fontSize: 24, font: 'gothic', opacity: .38, penWidth: 5, drawing: false, start: null, draft: null } };
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
   const refs = {
@@ -47,7 +47,7 @@
 
   function resetCurrent(clearMessage = true) {
     state.files = []; state.pages = []; state.pdfJsDoc = null;
-    state.editor = { page: 0, annotations: [], activeTool: 'text', color: '#e32929', size: 22, drawing: false, start: null, draft: null };
+    state.editor = { page: 0, annotations: [], activeTool: 'text', color: '#e32929', fontSize: 24, font: 'gothic', opacity: .38, penWidth: 5, drawing: false, start: null, draft: null };
     refs.input.value = ''; refs.content.innerHTML = ''; refs.drop.classList.remove('hidden'); refs.reset.classList.add('hidden');
     if (clearMessage) clearNotices();
   }
@@ -263,11 +263,30 @@
           <button class="editor-tool is-selected" data-edit-tool="text" type="button">文字</button>
           <button class="editor-tool" data-edit-tool="pen" type="button">手書き</button>
           <button class="editor-tool" data-edit-tool="highlight" type="button">マーカー</button>
-          <button class="editor-tool" data-edit-tool="black" type="button">黒塗り</button>
-          <button class="editor-tool" data-edit-tool="white" type="button">白塗り</button>
-          <label class="editor-control">色 <input id="edit-color" type="color" value="#e32929"></label>
-          <label class="editor-control">太さ <input id="edit-size" type="range" min="2" max="48" value="22"></label>
           <button class="editor-undo" id="editor-undo" type="button">↶ 元に戻す</button>
+        </div>
+        <div class="editor-options" aria-label="編集設定">
+          <label class="editor-control">色 <input id="edit-color" type="color" value="#e32929"></label>
+          <label class="editor-control" data-editor-setting="text">フォント
+            <select id="edit-font">
+              <option value="gothic">ゴシック体</option>
+              <option value="mincho">明朝体</option>
+              <option value="rounded">丸ゴシック体</option>
+              <option value="monospace">等幅フォント</option>
+            </select>
+          </label>
+          <label class="editor-control" data-editor-setting="text">文字サイズ
+            <select id="edit-font-size">
+              <option value="12">12</option><option value="16">16</option><option value="20">20</option><option value="24" selected>24</option>
+              <option value="32">32</option><option value="40">40</option><option value="48">48</option><option value="64">64</option>
+            </select>
+          </label>
+          <label class="editor-control hidden" data-editor-setting="pen">線の太さ
+            <input id="edit-pen-width" type="range" min="2" max="24" value="5"><output id="pen-width-value">5</output>
+          </label>
+          <label class="editor-control hidden" data-editor-setting="highlight">不透明度
+            <input id="edit-opacity" type="range" min="5" max="100" step="5" value="38"><output id="opacity-value">38%</output>
+          </label>
         </div>
         <p class="editor-help" id="editor-help">PDF上の文字を入れたい場所をタップしてください。</p>
         <div class="editor-stage" id="editor-stage"><canvas id="pdf-canvas"></canvas><canvas id="annotation-canvas"></canvas></div>
@@ -277,7 +296,10 @@
     bindFileRows(() => resetCurrent());
     $$('.editor-tool').forEach(button => button.addEventListener('click', () => selectEditorTool(button.dataset.editTool)));
     $('#edit-color').addEventListener('input', event => { state.editor.color = event.target.value; });
-    $('#edit-size').addEventListener('input', event => { state.editor.size = Number(event.target.value); });
+    $('#edit-font').addEventListener('change', event => { state.editor.font = event.target.value; });
+    $('#edit-font-size').addEventListener('change', event => { state.editor.fontSize = Number(event.target.value); });
+    $('#edit-pen-width').addEventListener('input', event => { state.editor.penWidth = Number(event.target.value); $('#pen-width-value').textContent = event.target.value; });
+    $('#edit-opacity').addEventListener('input', event => { state.editor.opacity = Number(event.target.value) / 100; $('#opacity-value').textContent = `${event.target.value}%`; });
     $('#editor-undo').addEventListener('click', () => { state.editor.annotations[state.editor.page].pop(); drawAnnotations(); });
     $('#editor-prev').addEventListener('click', () => changeEditorPage(-1));
     $('#editor-next').addEventListener('click', () => changeEditorPage(1));
@@ -290,7 +312,8 @@
   function selectEditorTool(tool) {
     state.editor.activeTool = tool;
     $$('.editor-tool').forEach(button => button.classList.toggle('is-selected', button.dataset.editTool === tool));
-    const help = { text: 'PDF上の文字を入れたい場所をタップしてください。', pen: 'PDF上を指やマウスでなぞってください。', highlight: '強調したい場所をドラッグしてください。', black: '隠したい場所をドラッグしてください。', white: '白く消したい場所をドラッグしてください。' };
+    $$('[data-editor-setting]').forEach(control => control.classList.toggle('hidden', control.dataset.editorSetting !== tool));
+    const help = { text: 'フォントと文字サイズを選び、文字を入れたい場所をタップしてください。', pen: '色と線の太さを選び、PDF上を指やマウスでなぞってください。', highlight: '色と不透明度を選び、塗りたい場所をドラッグしてください。' };
     $('#editor-help').textContent = help[tool];
   }
 
@@ -315,9 +338,9 @@
     const point = event => { const rect = canvas.getBoundingClientRect(); const source = event.touches ? event.touches[0] : event; return { x: (source.clientX - rect.left) / rect.width, y: (source.clientY - rect.top) / rect.height }; };
     const start = event => {
       event.preventDefault(); const p = point(event); const tool = state.editor.activeTool;
-      if (tool === 'text') { const value = prompt('追加する文字を入力してください'); if (value) { state.editor.annotations[state.editor.page].push({ type: 'text', x: p.x, y: p.y, text: value, color: state.editor.color, size: state.editor.size }); drawAnnotations(); } return; }
+      if (tool === 'text') { const value = prompt('追加する文字を入力してください'); if (value) { state.editor.annotations[state.editor.page].push({ type: 'text', x: p.x, y: p.y, text: value, color: state.editor.color, size: state.editor.fontSize, font: state.editor.font }); drawAnnotations(); } return; }
       state.editor.drawing = true; state.editor.start = p;
-      state.editor.draft = tool === 'pen' ? { type: 'pen', color: state.editor.color, size: Math.max(2, state.editor.size / 5), points: [p] } : { type: tool, x: p.x, y: p.y, w: 0, h: 0 };
+      state.editor.draft = tool === 'pen' ? { type: 'pen', color: state.editor.color, size: state.editor.penWidth, points: [p] } : { type: 'highlight', color: state.editor.color, opacity: state.editor.opacity, x: p.x, y: p.y, w: 0, h: 0 };
     };
     const move = event => { if (!state.editor.drawing) return; event.preventDefault(); const p = point(event); const draft = state.editor.draft; if (draft.type === 'pen') draft.points.push(p); else { draft.x = Math.min(state.editor.start.x, p.x); draft.y = Math.min(state.editor.start.y, p.y); draft.w = Math.abs(p.x - state.editor.start.x); draft.h = Math.abs(p.y - state.editor.start.y); } drawAnnotations(draft); };
     const end = event => { if (!state.editor.drawing) return; event.preventDefault(); state.editor.drawing = false; const draft = state.editor.draft; if (draft.type === 'pen' ? draft.points.length > 1 : draft.w > .003 && draft.h > .003) state.editor.annotations[state.editor.page].push(draft); state.editor.draft = null; drawAnnotations(); };
@@ -332,10 +355,11 @@
   }
 
   function drawAnnotation(ctx, item, width, height) {
-    if (item.type === 'text') { ctx.fillStyle = item.color; ctx.font = `700 ${Math.max(8, item.size * width / 900)}px sans-serif`; ctx.textBaseline = 'top'; item.text.split('\n').forEach((line, i) => ctx.fillText(line, item.x * width, item.y * height + i * item.size * 1.25 * width / 900)); return; }
+    const fonts = { gothic: '"Yu Gothic", "Noto Sans JP", sans-serif', mincho: '"Yu Mincho", "Noto Serif JP", serif', rounded: '"Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif', monospace: 'monospace' };
+    if (item.type === 'text') { ctx.fillStyle = item.color; const renderedSize = Math.max(8, item.size * width / 900); ctx.font = `700 ${renderedSize}px ${fonts[item.font] || fonts.gothic}`; ctx.textBaseline = 'top'; item.text.split('\n').forEach((line, i) => ctx.fillText(line, item.x * width, item.y * height + i * renderedSize * 1.25)); return; }
     if (item.type === 'pen') { ctx.strokeStyle = item.color; ctx.lineWidth = item.size * width / 900; ctx.lineCap = ctx.lineJoin = 'round'; ctx.beginPath(); item.points.forEach((p, i) => i ? ctx.lineTo(p.x * width, p.y * height) : ctx.moveTo(p.x * width, p.y * height)); ctx.stroke(); return; }
-    ctx.fillStyle = item.type === 'black' ? '#000' : item.type === 'white' ? '#fff' : 'rgba(255, 225, 0, .38)';
-    ctx.fillRect(item.x * width, item.y * height, item.w * width, item.h * height);
+    ctx.save(); ctx.globalAlpha = Number.isFinite(item.opacity) ? item.opacity : .38; ctx.fillStyle = item.color || '#ffe100';
+    ctx.fillRect(item.x * width, item.y * height, item.w * width, item.h * height); ctx.restore();
   }
 
   async function changeEditorPage(amount) { const next = state.editor.page + amount; if (next < 0 || next >= state.pdfJsDoc.numPages) return; state.editor.page = next; await renderEditorPage(); }
