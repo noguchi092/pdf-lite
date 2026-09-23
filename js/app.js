@@ -10,11 +10,11 @@
     split: { title: 'PDFを分割', description: 'ページごと、または指定した範囲ごとに分けます。', multiple: false, drop: '分割するPDFファイルを選択' },
     compress: { title: 'PDFを圧縮', description: '画質を選び、画像として再構成して容量を軽くします。', multiple: false, drop: '圧縮するPDFファイルを選択' },
     organize: { title: 'ページを整理', description: 'ページを見ながら、並べ替え・回転・削除ができます。', multiple: false, drop: '整理するPDFファイルを選択' },
-    edit: { title: 'PDFを編集', description: 'PDFの上に文字・手書き・マーカーを追加して保存します。', multiple: false, drop: '編集するPDFファイルを選択' }
+    edit: { title: 'PDFを編集', description: '文字の修正・追加、図形、画像、署名をExcelに近い操作で配置できます。', multiple: false, drop: '編集するPDFファイルを選択' }
   };
 
   const state = { tool: 'merge', files: [], pages: [], splitMode: 'each', compressLevel: 'standard', pdfJsDoc: null,
-    editor: { page: 0, annotations: [], activeTool: 'text', color: '#e32929', fontSize: 24, font: 'gothic', opacity: .38, penWidth: 5, zoom: 1, drawing: false, start: null, draft: null } };
+    editor: { page: 0, annotations: [], textItems: [], activeTool: 'select', color: '#e32929', fontSize: 24, font: 'gothic', opacity: .38, penWidth: 3, shapeFill: 'none', zoom: 1, drawing: false, start: null, draft: null, selected: null, clipboard: null, history: [], future: [], interaction: null } };
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
   const refs = {
@@ -47,7 +47,7 @@
 
   function resetCurrent(clearMessage = true) {
     state.files = []; state.pages = []; state.pdfJsDoc = null;
-    state.editor = { page: 0, annotations: [], activeTool: 'text', color: '#e32929', fontSize: 24, font: 'gothic', opacity: .38, penWidth: 5, zoom: 1, drawing: false, start: null, draft: null };
+    state.editor = { page: 0, annotations: [], textItems: [], activeTool: 'select', color: '#e32929', fontSize: 24, font: 'gothic', opacity: .38, penWidth: 3, shapeFill: 'none', zoom: 1, drawing: false, start: null, draft: null, selected: null, clipboard: null, history: [], future: [], interaction: null };
     refs.input.value = ''; refs.content.innerHTML = ''; refs.drop.classList.remove('hidden'); refs.reset.classList.add('hidden');
     if (clearMessage) clearNotices();
   }
@@ -253,6 +253,10 @@
   }
 
   async function loadEditor() {
+    if (window.PdfLiteAdvancedEditor) {
+      await window.PdfLiteAdvancedEditor({ state, refs, fileRow, bindFileRows, resetCurrent, setProcessing, showError, showSuccess, PDFDocument, canvasToBytes, downloadBytes });
+      return;
+    }
     setProcessing(true, '編集画面を準備しています');
     const bytes = new Uint8Array(await state.files[0].arrayBuffer());
     state.pdfJsDoc = await pdfjsLib.getDocument({ data: bytes }).promise;
