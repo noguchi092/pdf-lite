@@ -14,7 +14,7 @@
   };
 
   const state = { tool: 'merge', files: [], pages: [], splitMode: 'each', compressLevel: 'standard', pdfJsDoc: null,
-    editor: { page: 0, annotations: [], textItems: [], activeTool: 'select', color: '#e32929', fontSize: 24, font: 'gothic', opacity: .38, penWidth: 3, shapeFill: 'none', zoom: 1, drawing: false, start: null, draft: null, selected: null, clipboard: null, history: [], future: [], interaction: null } };
+    editor: { page: 0, annotations: [], textItems: [], activeTool: 'select', color: '#e32929', fontSize: 24, font: 'gothic', opacity: .38, penWidth: 3, shapeFill: 'none', zoom: 1, drawing: false, start: null, draft: null, selected: null, clipboard: null, history: [], future: [], interaction: null, panning: null, spaceDown: false } };
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
   const refs = {
@@ -47,7 +47,7 @@
 
   function resetCurrent(clearMessage = true) {
     state.files = []; state.pages = []; state.pdfJsDoc = null;
-    state.editor = { page: 0, annotations: [], textItems: [], activeTool: 'select', color: '#e32929', fontSize: 24, font: 'gothic', opacity: .38, penWidth: 3, shapeFill: 'none', zoom: 1, drawing: false, start: null, draft: null, selected: null, clipboard: null, history: [], future: [], interaction: null };
+    state.editor = { page: 0, annotations: [], textItems: [], activeTool: 'select', color: '#e32929', fontSize: 24, font: 'gothic', opacity: .38, penWidth: 3, shapeFill: 'none', zoom: 1, drawing: false, start: null, draft: null, selected: null, clipboard: null, history: [], future: [], interaction: null, panning: null, spaceDown: false };
     refs.input.value = ''; refs.content.innerHTML = ''; refs.drop.classList.remove('hidden'); refs.reset.classList.add('hidden');
     if (clearMessage) clearNotices();
   }

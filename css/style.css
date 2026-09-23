@@ -141,13 +141,19 @@ textarea { width: 100%; min-height: 100px; border: 1px solid #cbd2e1; border-rad
 .editor-control input[type="range"] { width: 90px; }
 .editor-control select { min-height: 34px; padding: 4px 28px 4px 8px; border: 1px solid #ccd3e0; border-radius: 7px; background: #fff; color: var(--ink); }
 .editor-control output { min-width: 34px; color: var(--blue); }
+.color-palette { display: flex; align-items: center; gap: 5px; padding: 4px 8px; border-left: 1px solid var(--line); }
+.color-palette > span { margin-right: 2px; color: var(--muted); font-size: .75rem; font-weight: 800; }
+.color-palette button { width: 24px; height: 24px; padding: 0; border: 2px solid #fff; border-radius: 5px; background: var(--swatch); box-shadow: 0 0 0 1px #b7bfce; cursor: pointer; }
+.color-palette button:hover, .color-palette button.is-active { transform: translateY(-1px); box-shadow: 0 0 0 2px var(--blue), 0 3px 7px rgba(21,31,58,.18); }
 .editor-undo { margin-left: auto; color: var(--blue); }
 .editor-help { margin: 9px 0; color: var(--muted); font-size: .88rem; }
 .editor-zoom { display: flex; justify-content: center; align-items: center; gap: 7px; margin: 12px 0; }
 .editor-zoom button { min-width: 44px; height: 40px; padding: 0 12px; border: 1px solid #ccd3e0; border-radius: 9px; background: #fff; color: var(--ink); cursor: pointer; font-weight: 900; font-size: 1.05rem; }
 .editor-zoom button:nth-child(2) { min-width: 76px; font-size: .9rem; }
 .editor-zoom button:disabled { opacity: .4; cursor: not-allowed; }
+.editor-zoom small { color: var(--muted); font-weight: 700; }
 .editor-viewport { max-width: 100%; overflow: auto; padding: 4px; border-radius: 10px; background: #e8ebf1; -webkit-overflow-scrolling: touch; }
+.editor-viewport.is-panning { cursor: grabbing; user-select: none; }
 .editor-stage { position: relative; margin: 0 auto; overflow: hidden; background: #dfe3eb; box-shadow: 0 6px 20px rgba(21,31,58,.14); touch-action: none; }
 .editor-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 #annotation-canvas { cursor: crosshair; }
@@ -245,6 +251,7 @@ footer p { font-size: .85rem; }
   .editor-toolbar, .editor-options { gap: 6px; }.editor-tool, .editor-command, .editor-undo { padding: 8px 9px; font-size: .82rem; }.editor-undo { margin-left: 0; }
   .editor-ribbon { margin-inline: -8px; border-radius: 8px; }.editor-group { padding-inline: 6px; }.signature-card { padding: 18px; }.signature-actions { display: grid; grid-template-columns: 1fr 1fr; }.signature-actions .signature-primary { grid-column: 1 / -1; grid-row: 1; }
   .editor-options { align-items: stretch; }.editor-control { width: 100%; justify-content: space-between; }.editor-control input[type="range"] { flex: 1; }
+  .color-palette { width: 100%; flex-wrap: wrap; border-left: 0; }.editor-zoom { flex-wrap: wrap; }.editor-zoom small { width: 100%; text-align: center; }
   .company-table th, .company-table td { display: block; width: 100%; }.company-table th { border-bottom: 0; padding-bottom: 5px; }.company-table td { padding-top: 7px; }
 }
 
