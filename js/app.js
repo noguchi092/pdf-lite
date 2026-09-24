@@ -254,7 +254,7 @@
 
   async function loadEditor() {
     if (window.PdfLiteAdvancedEditor) {
-      await window.PdfLiteAdvancedEditor({ state, refs, fileRow, bindFileRows, resetCurrent, setProcessing, showError, showSuccess, PDFDocument, canvasToBytes, downloadBytes });
+      await window.PdfLiteAdvancedEditor({ state, refs, fileRow, bindFileRows, resetCurrent, setProcessing, showError, showSuccess, PDFDocument, degrees, canvasToBytes, downloadBytes });
       return;
     }
     setProcessing(true, '編集画面を準備しています');
@@ -375,10 +375,10 @@
       const doc = await PDFDocument.load(await state.files[0].arrayBuffer());
       for (let i = 0; i < doc.getPageCount(); i++) {
         const items = state.editor.annotations[i]; if (!items.length) continue;
-        const page = doc.getPage(i); const { width, height } = page.getSize();
-        const canvas = document.createElement('canvas'); const scale = Math.min(2, Math.max(1, 1400 / width)); canvas.width = Math.ceil(width * scale); canvas.height = Math.ceil(height * scale);
+        const page = doc.getPage(i); const { width, height } = page.getSize(); const rotation = ((page.getRotation().angle % 360) + 360) % 360; const sideways = rotation === 90 || rotation === 270; const displayWidth = sideways ? height : width; const displayHeight = sideways ? width : height;
+        const canvas = document.createElement('canvas'); const scale = Math.min(2, Math.max(1, 1400 / displayWidth)); canvas.width = Math.ceil(displayWidth * scale); canvas.height = Math.ceil(displayHeight * scale);
         const ctx = canvas.getContext('2d'); items.forEach(item => drawAnnotation(ctx, item, canvas.width, canvas.height));
-        const png = await doc.embedPng(await canvasToBytes(canvas, 'image/png')); page.drawImage(png, { x: 0, y: 0, width, height });
+        const png = await doc.embedPng(await canvasToBytes(canvas, 'image/png')); const placement = rotation === 90 ? { x: width, y: 0, width: height, height: width, rotate: degrees(90) } : rotation === 180 ? { x: width, y: height, width, height, rotate: degrees(180) } : rotation === 270 ? { x: 0, y: height, width: height, height: width, rotate: degrees(270) } : { x: 0, y: 0, width, height }; page.drawImage(png, placement);
         canvas.width = canvas.height = 1; setProgress(((i + 1) / doc.getPageCount()) * 92);
       }
       downloadBytes(await doc.save({ useObjectStreams: true }), '編集済み.pdf', 'application/pdf');
