@@ -13,7 +13,7 @@
     edit: { title: 'PDFを編集', description: '文字の修正・追加、図形、画像、署名をExcelに近い操作で配置できます。', multiple: false, drop: '編集するPDFファイルを選択' }
   };
 
-  const state = { tool: 'merge', files: [], pages: [], splitMode: 'each', compressLevel: 'standard', pdfJsDoc: null,
+  const state = { tool: 'merge', files: [], pages: [], splitMode: 'each', compressLevel: 'standard', pdfJsDoc: null, organizer: createOrganizerState(),
     editor: { page: 0, annotations: [], textItems: [], activeTool: 'select', color: '#e32929', fontSize: 24, font: 'gothic', opacity: .38, penWidth: 3, shapeFill: 'none', zoom: 1, drawing: false, start: null, draft: null, selected: null, clipboard: null, history: [], future: [], interaction: null, panning: null, spaceDown: false } };
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -46,7 +46,7 @@
   }
 
   function resetCurrent(clearMessage = true) {
-    state.files = []; state.pages = []; state.pdfJsDoc = null;
+    state.files = []; state.pages = []; state.pdfJsDoc = null; state.organizer = createOrganizerState();
     state.editor = { page: 0, annotations: [], textItems: [], activeTool: 'select', color: '#e32929', fontSize: 24, font: 'gothic', opacity: .38, penWidth: 3, shapeFill: 'none', zoom: 1, drawing: false, start: null, draft: null, selected: null, clipboard: null, history: [], future: [], interaction: null, panning: null, spaceDown: false };
     refs.input.value = ''; refs.content.innerHTML = ''; refs.drop.classList.remove('hidden'); refs.reset.classList.add('hidden');
     if (clearMessage) clearNotices();
@@ -205,10 +205,60 @@
     setProcessing(true, 'ページの見本を作成しています');
     const bytes = new Uint8Array(await state.files[0].arrayBuffer()); state.pdfJsDoc = await pdfjsLib.getDocument({ data: bytes }).promise;
     state.pages = Array.from({ length: state.pdfJsDoc.numPages }, (_, i) => ({ sourceIndex: i, rotation: 0, canvas: null }));
-    refs.content.innerHTML = `<div class="file-list">${fileRow(state.files[0], 0)}</div><p class="field-help" style="margin-top:16px">カードをドラッグ、または矢印ボタンで並べ替えられます。</p><div class="pages-grid" id="pages-grid"></div><button class="primary-button" id="run-organize" type="button">整理したPDFを保存する</button>`;
+    refs.content.innerHTML = `<div class="file-list">${fileRow(state.files[0], 0)}</div>
+      <section class="header-footer-settings" aria-labelledby="header-footer-title">
+        <div class="header-footer-heading"><div><p class="step-label">HEADER &amp; FOOTER</p><h3 id="header-footer-title">ヘッダー・フッター</h3></div><span>入力した項目だけ追加されます</span></div>
+        <div class="header-footer-sheet">
+          <div class="header-footer-row header-footer-labels" aria-hidden="true"><b></b><b>左</b><b>中央</b><b>右</b></div>
+          ${headerFooterRow('header', 'ヘッダー')}
+          ${headerFooterRow('footer', 'フッター')}
+        </div>
+        <div class="header-footer-tokens" aria-label="自動入力項目">
+          <span>自動入力：</span><button type="button" data-hf-token="&amp;[ページ番号]">ページ番号</button><button type="button" data-hf-token="&amp;[総ページ数]">総ページ数</button>
+          <small>例：&amp;[ページ番号] / &amp;[総ページ数]</small>
+        </div>
+        <div class="header-footer-options">
+          <label>フォント<select id="hf-font"><option value="gothic">ゴシック体</option><option value="mincho">明朝体</option><option value="rounded">丸ゴシック体</option><option value="monospace">等幅フォント</option></select></label>
+          <label>文字サイズ<select id="hf-size"><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option><option value="12">12</option><option value="14">14</option><option value="16">16</option><option value="18">18</option><option value="20">20</option><option value="24">24</option></select></label>
+          <label>文字色<input id="hf-color" type="color" value="#333333"></label>
+          <label>端からの余白<select id="hf-margin"><option value="12">狭い</option><option value="24" selected>標準</option><option value="36">広い</option></select></label>
+          <label>適用ページ<select id="hf-scope"><option value="all">すべてのページ</option><option value="first">最初のページのみ</option><option value="except-first">最初以外のページ</option><option value="custom">ページを指定</option></select></label>
+          <label id="hf-range-wrap" class="hidden">ページ指定<input id="hf-range" type="text" inputmode="numeric" placeholder="例：1-3, 5"></label>
+        </div>
+        <p class="field-help">ページ番号は、削除・並べ替え後の最終的な順番で付きます。下のカードで仕上がり位置を確認できます。</p>
+      </section>
+      <p class="field-help organizer-help">カードをドラッグ、または矢印ボタンで並べ替えられます。</p><div class="pages-grid" id="pages-grid"></div><button class="primary-button" id="run-organize" type="button">整理したPDFを保存する</button>`;
     bindFileRows(() => resetCurrent());
     for (let i = 0; i < state.pages.length; i++) { await renderThumbnail(i); setProgress(((i + 1) / state.pages.length) * 90); }
-    renderPages(); $('#run-organize').addEventListener('click', organizePdf); setProcessing(false);
+    bindHeaderFooterSettings(); renderPages(); $('#run-organize').addEventListener('click', organizePdf); setProcessing(false);
+  }
+
+  function createOrganizerState() {
+    return { header: { left: '', center: '', right: '' }, footer: { left: '', center: '', right: '' }, font: 'gothic', size: 10, color: '#333333', margin: 24, scope: 'all', range: '', focused: 'footer-center' };
+  }
+
+  function headerFooterRow(area, label) {
+    return `<div class="header-footer-row"><strong>${label}</strong>${['left', 'center', 'right'].map(position => `<input id="hf-${area}-${position}" data-hf-area="${area}" data-hf-position="${position}" type="text" autocomplete="off" placeholder="${label}${position === 'left' ? '左' : position === 'center' ? '中央' : '右'}">`).join('')}</div>`;
+  }
+
+  function bindHeaderFooterSettings() {
+    const settings = state.organizer;
+    $$('[data-hf-area]').forEach(input => {
+      input.value = settings[input.dataset.hfArea][input.dataset.hfPosition];
+      input.addEventListener('focus', () => { settings.focused = `${input.dataset.hfArea}-${input.dataset.hfPosition}`; });
+      input.addEventListener('input', () => { settings[input.dataset.hfArea][input.dataset.hfPosition] = input.value; renderPages(); });
+    });
+    $('#hf-font').value = settings.font; $('#hf-size').value = settings.size; $('#hf-color').value = settings.color; $('#hf-margin').value = settings.margin; $('#hf-scope').value = settings.scope; $('#hf-range').value = settings.range;
+    $('#hf-font').addEventListener('change', event => { settings.font = event.target.value; renderPages(); });
+    $('#hf-size').addEventListener('change', event => { settings.size = Number(event.target.value); renderPages(); });
+    $('#hf-color').addEventListener('input', event => { settings.color = event.target.value; renderPages(); });
+    $('#hf-margin').addEventListener('change', event => { settings.margin = Number(event.target.value); renderPages(); });
+    $('#hf-scope').addEventListener('change', event => { settings.scope = event.target.value; $('#hf-range-wrap').classList.toggle('hidden', settings.scope !== 'custom'); renderPages(); });
+    $('#hf-range').addEventListener('input', event => { settings.range = event.target.value; renderPages(); });
+    $$('[data-hf-token]').forEach(button => button.addEventListener('click', () => {
+      const input = $(`#hf-${settings.focused}`) || $('#hf-footer-center'); const token = button.dataset.hfToken;
+      input.focus(); input.setRangeText(token, input.selectionStart, input.selectionEnd, 'end'); input.dispatchEvent(new Event('input', { bubbles: true }));
+    }));
   }
 
   async function renderThumbnail(index) {
@@ -219,7 +269,7 @@
 
   function renderPages() {
     const grid = $('#pages-grid');
-    grid.innerHTML = state.pages.map((page, index) => `<article class="page-card" draggable="true" data-index="${index}"><div class="page-preview"><img src="${page.canvas}" draggable="false" alt="元の${page.sourceIndex + 1}ページ目の見本" style="max-width:100%;max-height:100%;transform:rotate(${page.rotation}deg)"></div><span class="page-number">${index + 1}ページ目</span><div class="page-actions"><button data-action="left" title="左へ" aria-label="${index + 1}ページ目を左へ">←</button><button data-action="right" title="右へ" aria-label="${index + 1}ページ目を右へ">→</button><button data-action="rotate" title="右回転" aria-label="${index + 1}ページ目を右に回転">↻</button><button data-action="delete" title="削除" aria-label="${index + 1}ページ目を削除">×</button></div></article>`).join('');
+    grid.innerHTML = state.pages.map((page, index) => `<article class="page-card" draggable="true" data-index="${index}"><div class="page-preview"><img src="${page.canvas}" draggable="false" alt="元の${page.sourceIndex + 1}ページ目の見本" style="max-width:100%;max-height:100%;transform:rotate(${page.rotation}deg)">${headerFooterPreview(index)}</div><span class="page-number">${index + 1}ページ目</span><div class="page-actions"><button data-action="left" title="左へ" aria-label="${index + 1}ページ目を左へ">←</button><button data-action="right" title="右へ" aria-label="${index + 1}ページ目を右へ">→</button><button data-action="rotate" title="右回転" aria-label="${index + 1}ページ目を右に回転">↻</button><button data-action="delete" title="削除" aria-label="${index + 1}ページ目を削除">×</button></div></article>`).join('');
     $$('.page-actions button').forEach(button => button.addEventListener('click', event => pageAction(Number(event.currentTarget.closest('.page-card').dataset.index), event.currentTarget.dataset.action)));
     let dragging = null;
     $$('.page-card').forEach(card => {
@@ -230,6 +280,41 @@
       card.addEventListener('drop', event => { event.preventDefault(); const target = Number(card.dataset.index); if (dragging !== null && dragging !== target) { const [item] = state.pages.splice(dragging, 1); state.pages.splice(target, 0, item); renderPages(); } });
     });
   }
+
+  function headerFooterPreview(index) {
+    if (!organizerPageIsSelected(index, false)) return '';
+    const settings = state.organizer; const previewSize = Math.max(5, Math.min(11, settings.size * .55)); const style = `color:${settings.color};font-family:${organizerFont(settings.font)};font-size:${previewSize}px`;
+    const row = area => `<div class="page-${area}" style="${style}">${['left', 'center', 'right'].map(position => `<span>${escapeHtml(resolveHeaderFooterText(settings[area][position], index, state.pages.length))}</span>`).join('')}</div>`;
+    return `<div class="page-header-footer" aria-hidden="true">${row('header')}${row('footer')}</div>`;
+  }
+
+  function organizerFont(font) {
+    return { gothic: 'Arial, sans-serif', mincho: 'serif', rounded: 'Arial Rounded MT Bold, sans-serif', monospace: 'monospace' }[font] || 'Arial, sans-serif';
+  }
+
+  function resolveHeaderFooterText(text, index, count) {
+    return String(text || '').replaceAll('&[ページ番号]', String(index + 1)).replaceAll('&[総ページ数]', String(count));
+  }
+
+  function organizerSelectedPages(throwOnError = true) {
+    const { scope, range } = state.organizer; const count = state.pages.length;
+    if (scope === 'all') return new Set(Array.from({ length: count }, (_, i) => i));
+    if (scope === 'first') return new Set([0]);
+    if (scope === 'except-first') return new Set(Array.from({ length: Math.max(0, count - 1) }, (_, i) => i + 1));
+    const selected = new Set();
+    try {
+      if (!range.trim()) throw new Error('ヘッダー・フッターを入れるページを指定してください。');
+      range.split(',').forEach(part => {
+        const match = part.trim().match(/^(\d+)(?:\s*[-〜~]\s*(\d+))?$/); if (!match) throw new Error(`ページ指定「${part.trim()}」を確認してください。`);
+        const start = Number(match[1]); const end = Number(match[2] || match[1]);
+        if (start < 1 || end > count || start > end) throw new Error(`ヘッダー・フッターのページは1〜${count}で指定してください。`);
+        for (let page = start; page <= end; page++) selected.add(page - 1);
+      });
+      return selected;
+    } catch (error) { if (throwOnError) throw error; return selected; }
+  }
+
+  function organizerPageIsSelected(index, throwOnError = true) { return organizerSelectedPages(throwOnError).has(index); }
 
   function pageAction(index, action) {
     if (action === 'delete') { if (state.pages.length === 1) return showError('すべてのページは削除できません。'); state.pages.splice(index, 1); }
@@ -242,14 +327,36 @@
   async function organizePdf() {
     setProcessing(true, 'ページを新しい順番で保存しています');
     try {
+      const hasHeaderFooter = organizerHasContent(); const selectedPages = hasHeaderFooter ? organizerSelectedPages(true) : new Set();
       const source = await PDFDocument.load(await state.files[0].arrayBuffer()); const output = await PDFDocument.create();
       for (let i = 0; i < state.pages.length; i++) {
         const item = state.pages[i]; const [page] = await output.copyPages(source, [item.sourceIndex]);
-        const original = page.getRotation().angle || 0; page.setRotation(degrees((original + item.rotation) % 360)); output.addPage(page); setProgress(((i + 1) / state.pages.length) * 92);
+        const original = page.getRotation().angle || 0; const rotation = ((original + item.rotation) % 360 + 360) % 360; page.setRotation(degrees(rotation)); output.addPage(page);
+        if (selectedPages.has(i)) await drawHeaderFooter(output, page, i, rotation);
+        setProgress(((i + 1) / state.pages.length) * 92);
       }
       downloadBytes(await output.save({ useObjectStreams: true }), 'ページ整理済み.pdf', 'application/pdf'); showSuccess('ページ整理が完了しました。「ページ整理済み.pdf」を保存しました。');
-    } catch (error) { console.error(error); showError('ページを保存できませんでした。'); }
+    } catch (error) { console.error(error); showError(error.message || 'ページを保存できませんでした。'); }
     finally { setProcessing(false); }
+  }
+
+  function organizerHasContent() {
+    return ['header', 'footer'].some(area => ['left', 'center', 'right'].some(position => state.organizer[area][position].trim()));
+  }
+
+  async function drawHeaderFooter(doc, page, index, rotation) {
+    const { width, height } = page.getSize(); const sideways = rotation === 90 || rotation === 270; const displayWidth = sideways ? height : width; const displayHeight = sideways ? width : height;
+    const scale = Math.min(3, Math.max(1.5, 1500 / displayWidth)); const canvas = document.createElement('canvas'); canvas.width = Math.ceil(displayWidth * scale); canvas.height = Math.ceil(displayHeight * scale);
+    const ctx = canvas.getContext('2d'); const settings = state.organizer; const fontSize = settings.size * scale; const margin = settings.margin * scale;
+    ctx.fillStyle = settings.color; ctx.font = `${fontSize}px ${organizerFont(settings.font)}`; ctx.textBaseline = 'top';
+    const drawRow = (area, y) => ['left', 'center', 'right'].forEach((position, positionIndex) => {
+      const text = resolveHeaderFooterText(settings[area][position], index, state.pages.length); if (!text) return;
+      ctx.textAlign = ['left', 'center', 'right'][positionIndex]; const x = [margin, canvas.width / 2, canvas.width - margin][positionIndex]; ctx.fillText(text, x, y, Math.max(1, canvas.width / 3 - margin));
+    });
+    drawRow('header', margin); ctx.textBaseline = 'bottom'; drawRow('footer', canvas.height - margin);
+    const png = await doc.embedPng(await canvasToBytes(canvas, 'image/png'));
+    const placement = rotation === 90 ? { x: width, y: 0, width: height, height: width, rotate: degrees(90) } : rotation === 180 ? { x: width, y: height, width, height, rotate: degrees(180) } : rotation === 270 ? { x: 0, y: height, width: height, height: width, rotate: degrees(270) } : { x: 0, y: 0, width, height };
+    page.drawImage(png, placement); canvas.width = canvas.height = 1;
   }
 
   async function loadEditor() {
