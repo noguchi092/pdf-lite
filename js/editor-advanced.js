@@ -33,9 +33,8 @@
           <label class="editor-control hidden" data-setting="rect ellipse line arrow pen selected-shape">線幅 <input id="edit-line-width" type="range" min="1" max="24" value="3"><output id="line-width-value">3</output></label>
           <label class="editor-control hidden" data-setting="rect ellipse selected-shape">塗り <select id="edit-shape-fill"><option value="none">なし</option><option value="light">淡色</option><option value="solid">塗りつぶし</option></select></label>
           <label class="editor-control hidden" data-setting="highlight selected-highlight">不透明度 <input id="edit-opacity" type="range" min="5" max="100" step="5" value="38"><output id="opacity-value">38%</output></label>
-          <label class="editor-control hidden" id="editor-rotation-control">回転 <input id="edit-rotation" type="range" min="-180" max="180" step="1" value="0"><output id="rotation-value">0°</output></label>
         </div>
-        <p class="editor-help" id="editor-help">要素を選択して移動・サイズ変更できます。スクリーンショットはコピー後、Ctrl＋Vで貼り付けできます。</p>
+        <p class="editor-help" id="editor-help">要素を選択し、上の丸いハンドルで回転、右下の青いハンドルでサイズ変更できます。スクリーンショットはコピー後、Ctrl＋Vで貼り付けできます。</p>
         <div class="editor-zoom" aria-label="表示倍率"><button id="editor-zoom-out" type="button">−</button><button id="editor-zoom-reset" type="button"><span id="editor-zoom-label">100%</span></button><button id="editor-zoom-in" type="button">＋</button><small>Ctrl＋ホイールで拡大縮小・ホイール押し込みまたはSpace＋ドラッグで移動</small></div>
         <div class="editor-viewport" id="editor-viewport"><div class="editor-stage" id="editor-stage" tabindex="0"><canvas id="pdf-canvas"></canvas><canvas id="annotation-canvas"></canvas></div></div>
         <div class="editor-pagination"><button id="editor-prev" type="button">← 前のページ</button><strong id="editor-page-label"></strong><button id="editor-next" type="button">次のページ →</button></div>
@@ -49,7 +48,7 @@
 
     function items() { return editor.annotations[editor.page]; }
     function selected() { return editor.selected?.page === editor.page ? items()[editor.selected.index] : null; }
-    let wheelTarget = editor.zoom; let wheelTimer = null; let rotationEditing = false;
+    let wheelTarget = editor.zoom; let wheelTimer = null;
     function snapshot() { editor.history.push(clone(editor.annotations)); if (editor.history.length > 40) editor.history.shift(); editor.future = []; }
     function add(item) { items().push(item); editor.selected = { page: editor.page, index: items().length - 1 }; setTool('select', true); }
 
@@ -64,8 +63,6 @@
       $('#edit-line-width').addEventListener('change', event => { editor.penWidth = Number(event.target.value); $('#line-width-value').textContent = event.target.value; restyle('size', editor.penWidth); });
       $('#edit-shape-fill').addEventListener('change', event => { editor.shapeFill = event.target.value; restyle('fill', editor.shapeFill); });
       $('#edit-opacity').addEventListener('change', event => { editor.opacity = Number(event.target.value) / 100; $('#opacity-value').textContent = `${event.target.value}%`; restyle('opacity', editor.opacity); });
-      $('#edit-rotation').addEventListener('input', event => { const item = selected(); if (!item) return; if (!rotationEditing) { snapshot(); rotationEditing = true; } item.rotation = Number(event.target.value); $('#rotation-value').textContent = `${event.target.value}°`; draw(); updateActions(); });
-      $('#edit-rotation').addEventListener('change', () => { rotationEditing = false; });
       $('#editor-prev').addEventListener('click', () => changePage(-1)); $('#editor-next').addEventListener('click', () => changePage(1));
       $('#editor-zoom-out').addEventListener('click', () => setZoom(editor.zoom - .25)); $('#editor-zoom-reset').addEventListener('click', () => setZoom(1)); $('#editor-zoom-in').addEventListener('click', () => setZoom(editor.zoom + .25));
       $('#editor-viewport').addEventListener('wheel', event => { if (!event.ctrlKey && !event.metaKey) return; event.preventDefault(); wheelTarget = clamp(wheelTarget + (event.deltaY < 0 ? .25 : -.25), .5, 3); clearTimeout(wheelTimer); wheelTimer = setTimeout(() => setZoom(wheelTarget), 60); }, { passive: false });
@@ -74,7 +71,7 @@
 
     function setTool(tool, keepSelection = false) {
       editor.activeTool = tool; if (!keepSelection) editor.selected = null; $$('.editor-tool[data-edit-tool]').forEach(button => button.classList.toggle('is-selected', button.dataset.editTool === tool));
-      const help = { select: '要素を選択して移動・サイズ変更できます。スクリーンショットはコピー後、Ctrl＋Vで貼り付けできます。', replace: '青い点線で囲まれた既存文字をクリックして置き換えます。元の文字情報はPDF内に残ります。', text: '文字を追加する位置をクリックしてください。', rect: 'ドラッグして四角形を作成します。', ellipse: 'ドラッグして円・楕円を作成します。', line: 'ドラッグして線を作成します。', arrow: 'ドラッグして矢印を作成します。', pen: '指またはマウスで手書きします。', highlight: 'ドラッグしてマーカーを作成します。' };
+      const help = { select: '要素を選択し、上の丸いハンドルで回転、右下の青いハンドルでサイズ変更できます。スクリーンショットはコピー後、Ctrl＋Vで貼り付けできます。', replace: '青い点線で囲まれた既存文字をクリックして置き換えます。元の文字情報はPDF内に残ります。', text: '文字を追加する位置をクリックしてください。', rect: 'ドラッグして四角形を作成します。', ellipse: 'ドラッグして円・楕円を作成します。', line: 'ドラッグして線を作成します。', arrow: 'ドラッグして矢印を作成します。', pen: '指またはマウスで手書きします。', highlight: 'ドラッグしてマーカーを作成します。' };
       $('#editor-help').textContent = help[tool]; $('#annotation-canvas').style.cursor = tool === 'select' ? 'default' : tool === 'text' || tool === 'replace' ? 'text' : 'crosshair'; updateOptions(); updateColorPalette(); draw(); updateActions();
     }
 
@@ -97,19 +94,42 @@
         else if (tool === 'line' || tool === 'arrow') editor.draft = { type: tool, color: editor.color, size: editor.penWidth, x: p.x, y: p.y, x2: p.x, y2: p.y };
         else editor.draft = { type: tool, color: editor.color, size: editor.penWidth, opacity: tool === 'highlight' ? editor.opacity : 1, fill: editor.shapeFill, x: p.x, y: p.y, w: 0, h: 0 };
       });
-      canvas.addEventListener('pointermove', event => { if (editor.panning) { const viewport = $('#editor-viewport'); viewport.scrollLeft = editor.panning.left - (event.clientX - editor.panning.x); viewport.scrollTop = editor.panning.top - (event.clientY - editor.panning.y); return; } const p = point(event); if (editor.interaction) { updateInteraction(p); return; } if (!editor.drawing) return; const d = editor.draft; if (d.type === 'pen') d.points.push(p); else if (d.type === 'line' || d.type === 'arrow') { d.x2 = p.x; d.y2 = p.y; } else { d.x = Math.min(editor.start.x, p.x); d.y = Math.min(editor.start.y, p.y); d.w = Math.abs(p.x - editor.start.x); d.h = Math.abs(p.y - editor.start.y); } draw(d); });
+      canvas.addEventListener('pointermove', event => { if (editor.panning) { const viewport = $('#editor-viewport'); viewport.scrollLeft = editor.panning.left - (event.clientX - editor.panning.x); viewport.scrollTop = editor.panning.top - (event.clientY - editor.panning.y); return; } const p = point(event); if (editor.interaction) { updateInteraction(p, event); return; } if (!editor.drawing) return; const d = editor.draft; if (d.type === 'pen') d.points.push(p); else if (d.type === 'line' || d.type === 'arrow') { d.x2 = p.x; d.y2 = p.y; } else { d.x = Math.min(editor.start.x, p.x); d.y = Math.min(editor.start.y, p.y); d.w = Math.abs(p.x - editor.start.x); d.h = Math.abs(p.y - editor.start.y); } draw(d); });
       const endPointer = () => { if (editor.panning) { editor.panning = null; $('#editor-viewport').classList.remove('is-panning'); canvas.style.cursor = editor.spaceDown ? 'grab' : editor.activeTool === 'select' ? 'default' : editor.activeTool === 'text' || editor.activeTool === 'replace' ? 'text' : 'crosshair'; return; } if (editor.interaction) { editor.interaction = null; draw(); updateActions(); return; } if (!editor.drawing) return; editor.drawing = false; const d = editor.draft; editor.draft = null; const valid = d.type === 'pen' ? d.points.length > 1 : ['line', 'arrow'].includes(d.type) ? Math.hypot(d.x2 - d.x, d.y2 - d.y) > .005 : d.w > .003 && d.h > .003; if (valid) { snapshot(); add(d); } else draw(); };
       canvas.addEventListener('pointerup', endPointer); canvas.addEventListener('pointercancel', endPointer);
       canvas.addEventListener('dblclick', editText);
     }
 
     function startSelection(p) {
-      const item = selected(); const canvas = $('#annotation-canvas'); if (item) { const b = bounds(item, canvas.width, canvas.height); const local = unrotatePoint(p, item, b); const hx = 14 / canvas.width; const hy = 14 / canvas.height; if (Math.abs(local.x - b.x - b.w) < hx && Math.abs(local.y - b.y - b.h) < hy) { snapshot(); editor.interaction = { mode: 'resize', start: p, startLocal: local, original: clone(item), bounds: b }; return; } }
+      const item = selected(); const canvas = $('#annotation-canvas');
+      if (item) {
+        const b = bounds(item, canvas.width, canvas.height); const local = unrotatePoint(p, item, b); const handle = rotationHandle(b, canvas.width, canvas.height);
+        const rotateDistance = Math.hypot((local.x - handle.x) * canvas.width, (local.y - handle.y) * canvas.height);
+        if (rotateDistance <= 13) {
+          snapshot();
+          const center = { x: (b.x + b.w / 2) * canvas.width, y: (b.y + b.h / 2) * canvas.height };
+          editor.interaction = { mode: 'rotate', center, startAngle: Math.atan2(p.y * canvas.height - center.y, p.x * canvas.width - center.x), original: clone(item), bounds: b };
+          return;
+        }
+        const hx = 14 / canvas.width; const hy = 14 / canvas.height;
+        if (Math.abs(local.x - b.x - b.w) < hx && Math.abs(local.y - b.y - b.h) < hy) { snapshot(); editor.interaction = { mode: 'resize', start: p, startLocal: local, original: clone(item), bounds: b }; return; }
+      }
       const index = hit(p); if (index < 0) { editor.selected = null; draw(); updateOptions(); updateActions(); return; } editor.selected = { page: editor.page, index }; snapshot(); editor.interaction = { mode: 'move', start: p, original: clone(items()[index]) }; draw(); updateOptions(); updateActions();
     }
-    function updateInteraction(p) { const item = selected(); const a = editor.interaction; if (!item) return; if (a.mode === 'move') { Object.assign(item, clone(a.original)); offset(item, p.x - a.start.x, p.y - a.start.y); } else { const local = unrotatePoint(p, a.original, a.bounds); resize(item, a.original, a.bounds, local.x - a.startLocal.x, local.y - a.startLocal.y); } draw(); }
+    function updateInteraction(p, event) {
+      const item = selected(); const a = editor.interaction; if (!item) return;
+      if (a.mode === 'move') { Object.assign(item, clone(a.original)); offset(item, p.x - a.start.x, p.y - a.start.y); }
+      else if (a.mode === 'rotate') {
+        const canvas = $('#annotation-canvas'); const angle = Math.atan2(p.y * canvas.height - a.center.y, p.x * canvas.width - a.center.x);
+        let rotation = (Number(a.original.rotation) || 0) + (angle - a.startAngle) * 180 / Math.PI;
+        rotation = ((rotation + 180) % 360 + 360) % 360 - 180;
+        item.rotation = event?.shiftKey ? Math.round(rotation / 15) * 15 : Math.round(rotation);
+      } else { const local = unrotatePoint(p, a.original, a.bounds); resize(item, a.original, a.bounds, local.x - a.startLocal.x, local.y - a.startLocal.y); }
+      draw();
+    }
     function hit(p) { const c = $('#annotation-canvas'); for (let i = items().length - 1; i >= 0; i--) { const item = items()[i]; const b = bounds(item, c.width, c.height); const local = unrotatePoint(p, item, b); if (local.x >= b.x - .008 && local.x <= b.x + b.w + .008 && local.y >= b.y - .008 && local.y <= b.y + b.h + .008) return i; } return -1; }
     function unrotatePoint(point, item, b) { const angle = -(Number(item.rotation) || 0) * Math.PI / 180; if (!angle) return point; const cx = b.x + b.w / 2; const cy = b.y + b.h / 2; const dx = point.x - cx; const dy = point.y - cy; return { x: cx + dx * Math.cos(angle) - dy * Math.sin(angle), y: cy + dx * Math.sin(angle) + dy * Math.cos(angle) }; }
+    function rotationHandle(b, width, height) { const above = b.y * height > 42; return { x: b.x + b.w / 2, y: above ? b.y - 30 / height : b.y + b.h + 30 / height, edgeY: above ? b.y : b.y + b.h }; }
     function bounds(item, width, height) { if (item.type === 'pen') { const xs = item.points.map(p => p.x); const ys = item.points.map(p => p.y); return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(.01, Math.max(...xs) - Math.min(...xs)), h: Math.max(.01, Math.max(...ys) - Math.min(...ys)) }; } if (['line', 'arrow'].includes(item.type)) return { x: Math.min(item.x, item.x2), y: Math.min(item.y, item.y2), w: Math.max(.01, Math.abs(item.x2 - item.x)), h: Math.max(.01, Math.abs(item.y2 - item.y)) }; if (item.type === 'text') { const px = Math.max(8, item.size * width / 900); const lines = item.text.split('\n'); return { x: item.x, y: item.y, w: Math.max(.02, Math.max(...lines.map(l => l.length)) * px * .62 / width), h: Math.max(.02, lines.length * px * 1.25 / height) }; } return { x: item.x, y: item.y, w: item.w || .05, h: item.h || .03 }; }
     function offset(item, dx, dy) { if (item.type === 'pen') item.points.forEach(p => { p.x = clamp(p.x + dx); p.y = clamp(p.y + dy); }); else { item.x = clamp(item.x + dx); item.y = clamp(item.y + dy); if (['line', 'arrow'].includes(item.type)) { item.x2 = clamp(item.x2 + dx); item.y2 = clamp(item.y2 + dy); } } }
     function resize(item, original, b, dx, dy) { const nw = Math.max(.015, b.w + dx); const nh = Math.max(.015, b.h + dy); const sx = nw / b.w; const sy = nh / b.h; if (item.type === 'pen') item.points = original.points.map(p => ({ x: b.x + (p.x - b.x) * sx, y: b.y + (p.y - b.y) * sy })); else if (['line', 'arrow'].includes(item.type)) { item.x2 = clamp(original.x2 + dx); item.y2 = clamp(original.y2 + dy); } else if (item.type === 'text') item.size = Math.max(8, Math.round(original.size * Math.max(sx, sy))); else { item.w = Math.min(1 - item.x, nw); item.h = Math.min(1 - item.y, nh); } }
@@ -129,7 +149,15 @@
       if (item.type === 'rect' || item.type === 'ellipse') { ctx.save(); ctx.strokeStyle = item.color; ctx.lineWidth = item.size * width / 900; const alpha = item.fill === 'solid' ? 1 : item.fill === 'light' ? .2 : 0; ctx.fillStyle = item.color; ctx.globalAlpha = alpha || 1; if (item.type === 'rect') { if (alpha) ctx.fillRect(item.x * width, item.y * height, item.w * width, item.h * height); ctx.globalAlpha = 1; ctx.strokeRect(item.x * width, item.y * height, item.w * width, item.h * height); } else { ctx.beginPath(); ctx.ellipse((item.x + item.w / 2) * width, (item.y + item.h / 2) * height, item.w * width / 2, item.h * height / 2, 0, 0, Math.PI * 2); if (alpha) ctx.fill(); ctx.globalAlpha = 1; ctx.stroke(); } ctx.restore(); return; }
       ctx.save(); ctx.globalAlpha = Number.isFinite(item.opacity) ? item.opacity : .38; ctx.fillStyle = item.color; ctx.fillRect(item.x * width, item.y * height, item.w * width, item.h * height); ctx.restore();
     }
-    function drawSelection(ctx, item, width, height) { if (!item) return; const b = bounds(item, width, height); const x = b.x * width; const y = b.y * height; const w = b.w * width; const h = b.h * height; ctx.save(); rotateContext(ctx, item, width, height); ctx.strokeStyle = '#2979ff'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.strokeRect(x - 3, y - 3, w + 6, h + 6); ctx.setLineDash([]); ctx.fillStyle = '#fff'; ctx.fillRect(x + w - 6, y + h - 6, 12, 12); ctx.strokeRect(x + w - 6, y + h - 6, 12, 12); ctx.restore(); }
+    function drawSelection(ctx, item, width, height) {
+      if (!item) return;
+      const b = bounds(item, width, height); const x = b.x * width; const y = b.y * height; const w = b.w * width; const h = b.h * height; const handle = rotationHandle(b, width, height);
+      ctx.save(); rotateContext(ctx, item, width, height); ctx.strokeStyle = '#2979ff'; ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]); ctx.strokeRect(x - 3, y - 3, w + 6, h + 6); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(handle.x * width, handle.edgeY * height); ctx.lineTo(handle.x * width, handle.y * height); ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(handle.x * width, handle.y * height, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillRect(x + w - 6, y + h - 6, 12, 12); ctx.strokeRect(x + w - 6, y + h - 6, 12, 12); ctx.restore();
+    }
     function drawTextBoxes(ctx, width, height) { ctx.save(); ctx.strokeStyle = 'rgba(41,121,255,.55)'; ctx.setLineDash([3, 3]); (editor.textItems[editor.page] || []).forEach(item => ctx.strokeRect(item.x * width, item.y * height, item.w * width, item.h * height)); ctx.restore(); }
     function cachedImage(src) { if (!imageCache.has(src)) { const image = new Image(); image.onload = draw; image.src = src; imageCache.set(src, image); } return imageCache.get(src); }
 
@@ -143,7 +171,7 @@
     function remove() { if (!selected()) return; snapshot(); items().splice(editor.selected.index, 1); editor.selected = null; draw(); updateOptions(); updateActions(); }
     function restyle(property, value) { const item = selected(); if (!item) return; const okay = property === 'font' ? ['text', 'replace'].includes(item.type) : property === 'fill' ? ['rect', 'ellipse'].includes(item.type) : property === 'opacity' ? item.type === 'highlight' : true; if (!okay) return; snapshot(); item[property] = value; draw(); updateActions(); }
     function updateActions() { const has = !!selected(); $('#editor-undo').disabled = !editor.history.length; $('#editor-redo').disabled = !editor.future.length; $('#editor-copy').disabled = !has; $('#editor-delete').disabled = !has; $('#editor-paste').disabled = !editor.clipboard; }
-    function updateOptions() { const item = selected(); let key = editor.activeTool; if (editor.activeTool === 'select' && item) key = ['text', 'replace'].includes(item.type) ? 'selected-text' : ['rect', 'ellipse', 'line', 'arrow', 'pen'].includes(item.type) ? 'selected-shape' : item.type === 'highlight' ? 'selected-highlight' : item.type; $$('[data-setting]').forEach(control => control.classList.toggle('hidden', !control.dataset.setting.split(' ').includes(key))); $('#editor-rotation-control').classList.toggle('hidden', !item); if (!item) { rotationEditing = false; updateColorPalette(); return; } const rotation = (((Number(item.rotation) || 0) + 180) % 360 + 360) % 360 - 180; $('#edit-rotation').value = rotation; $('#rotation-value').textContent = `${rotation}°`; if (item.color) $('#edit-color').value = item.color; if (item.font) $('#edit-font').value = item.font; if (item.size) { if (['text', 'replace'].includes(item.type)) $('#edit-font-size').value = String(item.size); else { $('#edit-line-width').value = item.size; $('#line-width-value').textContent = item.size; } } if (item.fill) $('#edit-shape-fill').value = item.fill; if (Number.isFinite(item.opacity)) { $('#edit-opacity').value = Math.round(item.opacity * 100); $('#opacity-value').textContent = `${Math.round(item.opacity * 100)}%`; } updateColorPalette(); }
+    function updateOptions() { const item = selected(); let key = editor.activeTool; if (editor.activeTool === 'select' && item) key = ['text', 'replace'].includes(item.type) ? 'selected-text' : ['rect', 'ellipse', 'line', 'arrow', 'pen'].includes(item.type) ? 'selected-shape' : item.type === 'highlight' ? 'selected-highlight' : item.type; $$('[data-setting]').forEach(control => control.classList.toggle('hidden', !control.dataset.setting.split(' ').includes(key))); if (!item) { updateColorPalette(); return; } if (item.color) $('#edit-color').value = item.color; if (item.font) $('#edit-font').value = item.font; if (item.size) { if (['text', 'replace'].includes(item.type)) $('#edit-font-size').value = String(item.size); else { $('#edit-line-width').value = item.size; $('#line-width-value').textContent = item.size; } } if (item.fill) $('#edit-shape-fill').value = item.fill; if (Number.isFinite(item.opacity)) { $('#edit-opacity').value = Math.round(item.opacity * 100); $('#opacity-value').textContent = `${Math.round(item.opacity * 100)}%`; } updateColorPalette(); }
     function updateColorPalette() { const color = selected()?.color || editor.color; $$('.color-palette [data-color]').forEach(button => button.classList.toggle('is-active', button.dataset.color.toLowerCase() === String(color).toLowerCase())); }
 
     async function addImage(event) { const file = event.target.files[0]; event.target.value = ''; if (!file) return; await insertImageFile(file, false); }
